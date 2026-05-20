@@ -1,0 +1,97 @@
+import { notFound, redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import VideoReviewClient from './VideoReviewClient'
+
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default async function VideoReviewPage({ params }: Props) {
+  const { id } = await params
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: video } = await supabase
+    .from('videos')
+    .select(`
+      *,
+      video_versions(*)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (!video) notFound()
+
+  const versions = (video.video_versions ?? []).sort(
+    (a: { version_number: number }, b: { version_number: number }) => b.version_number - a.version_number
+  )
+  const latestVersion = versions[0] ?? null
+
+  // Get public URL for latest version
+  let videoUrl: string | null = null
+  if (latestVersion?.storage_path && !latestVersion.is_deleted) {
+    const { data } = supabase.storage.from('videos').getPublicUrl(latestVersion.storage_path)
+    videoUrl = data?.publicUrl ?? null
+  }
+
+  // Fetch comments with author profiles
+  const { data: commentsRaw } = await supabase
+    .from('comments')
+    .select(`
+      *,
+      annotations(*)
+    `)
+    .eq('video_id', id)
+    .order('timecode', { ascending: true, nullsFirst: false })
+
+  // Get author emails from auth
+  const authorIds = [...new Set((commentsRaw ?? []).map((c) => c.author_id))]
+  const authorMap: Record<string, { display_name: string | null; email: string }> = {}
+
+  if (authorIds.length > 0) {
+    const { data: members } = await supabase
+      .from('workspace_members')
+      .select('user_id, display_name')
+      .in('user_id', authorIds)
+
+    ;(members ?? []).forEach((m) => {
+      if (m.user_id) authorMap[m.user_id] = { display_name: m.display_name, email: '' }
+    })
+  }
+
+  const comments = (commentsRaw ?? []).map((c) => ({
+    ...c,
+    annotation: c.annotations?.[0] ?? null,
+    author: authorMap[c.author_id] ?? { display_name: null, email: '不明' },
+  }))
+
+  // Fetch templates
+  const { data: templates } = await supabase
+    .from('comment_templates')
+    .select('*')
+    .eq('workspace_id', video.workspace_id)
+    .order('sort_order')
+
+  // Check role
+  const { data: workspace } = await supabase
+    .from('workspaces')
+    .select('owner_id')
+    .eq('id', video.workspace_id)
+    .single()
+
+  const isDirector = workspace?.owner_id === user.id
+
+  return (
+    <VideoReviewClient
+      video={video}
+      versions={versions}
+      latestVersion={latestVersion}
+      videoUrl={videoUrl}
+      comments={comments}
+      templates={templates ?? []}
+      currentUser={{ id: user.id, email: user.email ?? '' }}
+      isDirector={isDirector}
+    />
+  )
+}
