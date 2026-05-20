@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Pen, Send, Image as ImageIcon, Clock,
-  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown
+  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -30,10 +30,10 @@ interface VideoReviewClientProps {
   isDirector: boolean
 }
 
-const STATUS_TRANSITIONS: Partial<Record<VideoStatus, { label: string; next: VideoStatus; color: string }>> = {
+// Director-only status transitions
+const DIRECTOR_TRANSITIONS: Partial<Record<VideoStatus, { label: string; next: VideoStatus; color: string }>> = {
   review: { label: '修正依頼を送る', next: 'revision_requested', color: 'bg-red-600 hover:bg-red-500' },
   revised: { label: '再レビューする', next: 'review', color: 'bg-amber-600 hover:bg-amber-500' },
-  revision_requested: { label: '修正済みにする', next: 'revised', color: 'bg-blue-600 hover:bg-blue-500' },
 }
 
 export default function VideoReviewClient({
@@ -59,8 +59,13 @@ export default function VideoReviewClient({
   const [videoStatus, setVideoStatus] = useState<VideoStatus>(video.status)
   const [showVersions, setShowVersions] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
+  const [showUploadModal, setShowUploadModal] = useState(false)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const uploadFileInputRef = useRef<HTMLInputElement>(null)
   const [videoContainerSize, setVideoContainerSize] = useState({ w: 0, h: 0 })
 
   const handleSeek = useCallback((t: number) => setSeekTo(t), [])
@@ -149,11 +154,47 @@ export default function VideoReviewClient({
     }
   }
 
+  async function handleV2Upload() {
+    if (!uploadFile) return
+    setUploading(true)
+    setUploadError(null)
+    try {
+      const nextVersion = (versions[0]?.version_number ?? 0) + 1
+      const ext = uploadFile.name.split('.').pop()
+      const path = `${video.workspace_id}/${video.id}/v${nextVersion}_${Date.now()}.${ext}`
+
+      const { error: storageErr } = await supabase.storage.from('videos').upload(path, uploadFile)
+      if (storageErr) throw new Error('動画のアップロードに失敗しました')
+
+      const { error: versionErr } = await supabase.from('video_versions').insert({
+        video_id: video.id,
+        version_number: nextVersion,
+        storage_path: path,
+        file_name: uploadFile.name,
+        file_size: uploadFile.size,
+        uploaded_by: currentUser.id,
+      })
+      if (versionErr) {
+        await supabase.storage.from('videos').remove([path])
+        throw new Error('バージョン情報の保存に失敗しました')
+      }
+
+      await handleStatusChange('revised')
+      setShowUploadModal(false)
+      setUploadFile(null)
+      router.refresh()
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'エラーが発生しました')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   function insertTemplate(content: string) {
     setCommentText((prev) => prev ? `${prev}\n${content}` : content)
   }
 
-  const transition = STATUS_TRANSITIONS[videoStatus]
+  const directorTransition = DIRECTOR_TRANSITIONS[videoStatus]
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -198,12 +239,24 @@ export default function VideoReviewClient({
           履歴
         </Link>
 
-        {isDirector && transition && (
+        {/* Editor: upload revised version */}
+        {!isDirector && videoStatus === 'revision_requested' && (
           <button
-            onClick={transition.next === 'approved' ? () => setShowApproveModal(true) : () => handleStatusChange(transition.next)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors ${transition.color}`}
+            onClick={() => { setShowUploadModal(true); setUploadError(null) }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
           >
-            {transition.label}
+            <Upload className="w-3.5 h-3.5" />
+            修正版をアップロード
+          </button>
+        )}
+
+        {/* Director: status transitions */}
+        {isDirector && directorTransition && (
+          <button
+            onClick={() => handleStatusChange(directorTransition.next)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors ${directorTransition.color}`}
+          >
+            {directorTransition.label}
           </button>
         )}
 
@@ -437,6 +490,77 @@ export default function VideoReviewClient({
             >
               キャンセル
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* V2 Upload modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-sm w-full mx-4">
+            <h2 className="text-white font-semibold text-lg mb-1">修正版をアップロード</h2>
+            <p className="text-[#666] text-sm mb-4">
+              修正した動画を選択してください。アップロード後、ステータスが「修正済み」になります。
+            </p>
+
+            {!uploadFile ? (
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-[#333] rounded-xl p-8 cursor-pointer hover:border-indigo-500 transition-colors">
+                <Upload className="w-8 h-8 text-[#555] mb-2" />
+                <span className="text-[#666] text-sm">クリックして動画を選択</span>
+                <input
+                  ref={uploadFileInputRef}
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            ) : (
+              <div className="bg-[#111] rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+                <Upload className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm truncate">{uploadFile.name}</p>
+                  <p className="text-[#555] text-xs mt-0.5">{formatFileSize(uploadFile.size)}</p>
+                </div>
+                <button
+                  onClick={() => setUploadFile(null)}
+                  className="text-[#555] hover:text-white text-xs flex-shrink-0"
+                  disabled={uploading}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+
+            {uploading && (
+              <div className="mt-3 mb-2">
+                <div className="h-1.5 bg-[#333] rounded-full overflow-hidden">
+                  <div className="h-full bg-indigo-500 rounded-full animate-pulse w-full" />
+                </div>
+                <p className="text-xs text-[#666] mt-1.5 text-center">アップロード中...</p>
+              </div>
+            )}
+
+            {uploadError && (
+              <p className="text-red-400 text-xs mt-2 mb-1">{uploadError}</p>
+            )}
+
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => { setShowUploadModal(false); setUploadFile(null); setUploadError(null) }}
+                disabled={uploading}
+                className="flex-1 bg-[#2a2a2a] hover:bg-[#333] text-white text-sm font-medium py-2.5 rounded-lg transition-colors disabled:opacity-40"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleV2Upload}
+                disabled={!uploadFile || uploading}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium py-2.5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                アップロード
+              </button>
+            </div>
           </div>
         </div>
       )}
