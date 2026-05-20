@@ -73,10 +73,26 @@ export default async function VideoReviewPage({ params }: Props) {
     })
   }
 
+  // Batch-sign comment image URLs
+  const imagePaths = (commentsRaw ?? [])
+    .filter((c) => c.image_path)
+    .map((c) => c.image_path as string)
+
+  const imageUrlMap: Record<string, string> = {}
+  if (imagePaths.length > 0) {
+    const { data: signedImages } = await supabase.storage
+      .from('images')
+      .createSignedUrls(imagePaths, 3600)
+    signedImages?.forEach(({ path, signedUrl }) => {
+      if (path && signedUrl) imageUrlMap[path] = signedUrl
+    })
+  }
+
   const comments = (commentsRaw ?? []).map((c) => ({
     ...c,
     annotation: c.annotations?.[0] ?? null,
     author: authorMap[c.author_id] ?? { display_name: null, email: '不明' },
+    imageUrl: c.image_path ? (imageUrlMap[c.image_path] ?? null) : null,
   }))
 
   // Fetch templates

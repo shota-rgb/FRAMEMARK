@@ -20,20 +20,25 @@ async function captureVideoThumbnail(file: File): Promise<Blob | null> {
     video.src = url
     video.muted = true
     video.playsInline = true
-    video.preload = 'metadata'
+    video.preload = 'auto'
     const cleanup = () => URL.revokeObjectURL(url)
-    video.onloadedmetadata = () => {
-      video.currentTime = Math.min(0.5, video.duration / 2)
+    const timer = setTimeout(() => { cleanup(); resolve(null) }, 10000)
+    const doCapture = () => {
+      clearTimeout(timer)
+      try {
+        const canvas = document.createElement('canvas')
+        const w = Math.min(video.videoWidth || 640, 640)
+        const h = video.videoHeight
+          ? Math.round(w * video.videoHeight / video.videoWidth)
+          : Math.round(w * 9 / 16)
+        canvas.width = w
+        canvas.height = h
+        canvas.getContext('2d')?.drawImage(video, 0, 0, w, h)
+        canvas.toBlob((blob) => { cleanup(); resolve(blob) }, 'image/jpeg', 0.85)
+      } catch { cleanup(); resolve(null) }
     }
-    video.onseeked = () => {
-      const canvas = document.createElement('canvas')
-      const w = Math.min(video.videoWidth, 640)
-      canvas.width = w
-      canvas.height = Math.round(w * video.videoHeight / video.videoWidth)
-      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
-      canvas.toBlob((blob) => { cleanup(); resolve(blob) }, 'image/jpeg', 0.85)
-    }
-    video.onerror = () => { cleanup(); resolve(null) }
+    video.onloadeddata = doCapture
+    video.onerror = () => { clearTimeout(timer); cleanup(); resolve(null) }
   })
 }
 

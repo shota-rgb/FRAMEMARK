@@ -71,6 +71,7 @@ export interface Comment {
   parent_id: string | null
   has_annotation: boolean
   image_path: string | null
+  imageUrl?: string | null
   created_at: string
   updated_at: string
   annotation?: Annotation

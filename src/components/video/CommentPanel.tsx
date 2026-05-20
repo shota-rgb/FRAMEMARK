@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Image from 'next/image'
 import { MessageSquare, Clock, CheckCircle2, Circle, ChevronRight, Image as ImageIcon, Reply } from 'lucide-react'
 import { formatTimecode, formatRelativeTime, cn } from '@/lib/utils'
 import type { Comment, Annotation } from '@/lib/types'
@@ -156,6 +157,19 @@ function CommentItem({
 
             <p className="text-sm text-[#ddd] leading-relaxed whitespace-pre-wrap">{comment.content}</p>
 
+            {comment.imageUrl && (
+              <div className="mt-2 rounded-lg overflow-hidden border border-[#333] max-w-[220px]">
+                <Image
+                  src={comment.imageUrl}
+                  alt="添付画像"
+                  width={220}
+                  height={140}
+                  className="w-full h-auto object-contain bg-[#111]"
+                  unoptimized
+                />
+              </div>
+            )}
+
             {comment.has_annotation && (
               <span className="inline-flex items-center gap-1 text-xs text-[#555] mt-1">
                 <ImageIcon className="w-3 h-3" />
@@ -192,6 +206,18 @@ function CommentItem({
                     <span className="text-xs text-[#444]">{formatRelativeTime(r.created_at)}</span>
                   </div>
                   <p className="text-xs text-[#ccc] leading-relaxed whitespace-pre-wrap">{r.content}</p>
+                  {r.imageUrl && (
+                    <div className="mt-1.5 rounded-lg overflow-hidden border border-[#333] max-w-[180px]">
+                      <Image
+                        src={r.imageUrl}
+                        alt="添付画像"
+                        width={180}
+                        height={110}
+                        className="w-full h-auto object-contain bg-[#111]"
+                        unoptimized
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
