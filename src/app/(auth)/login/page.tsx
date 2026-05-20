@@ -1,14 +1,20 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Film } from 'lucide-react'
+import { Film, Video, Scissors } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? '/dashboard'
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [orgName, setOrgName] = useState('')
+  const [role, setRole] = useState<'director' | 'editor'>('director')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [mode, setMode] = useState<'login' | 'signup'>('login')
@@ -24,13 +30,24 @@ export default function LoginPage() {
       if (mode === 'login') {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
         if (error) throw error
-        router.push('/dashboard')
+        router.push(next)
         router.refresh()
       } else {
+        if (role === 'director' && !orgName.trim()) {
+          setError('組織名を入力してください')
+          setLoading(false)
+          return
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${location.origin}/api/auth/callback` },
+          options: {
+            emailRedirectTo: `${location.origin}/api/auth/callback`,
+            data: {
+              role,
+              org_name: role === 'director' ? orgName.trim() : undefined,
+            },
+          },
         })
         if (error) throw error
         setError('確認メールを送信しました。メールを確認してください。')
@@ -58,6 +75,58 @@ export default function LoginPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Role selection (signup only) */}
+          {mode === 'signup' && (
+            <div>
+              <label className="block text-sm text-[#888] mb-2">アカウントの種類</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRole('director')}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border text-sm transition-colors',
+                    role === 'director'
+                      ? 'border-indigo-500 bg-indigo-950/40 text-white'
+                      : 'border-[#333] text-[#666] hover:border-[#444] hover:text-white'
+                  )}
+                >
+                  <Video className="w-5 h-5" />
+                  <span className="font-medium">ディレクター</span>
+                  <span className="text-xs text-[#666] leading-tight text-center">動画をレビューする</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRole('editor')}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 py-3 px-2 rounded-lg border text-sm transition-colors',
+                    role === 'editor'
+                      ? 'border-indigo-500 bg-indigo-950/40 text-white'
+                      : 'border-[#333] text-[#666] hover:border-[#444] hover:text-white'
+                  )}
+                >
+                  <Scissors className="w-5 h-5" />
+                  <span className="font-medium">編集者</span>
+                  <span className="text-xs text-[#666] leading-tight text-center">動画を編集・納品する</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Org name (director signup only) */}
+          {mode === 'signup' && role === 'director' && (
+            <div>
+              <label className="block text-sm text-[#888] mb-1.5">組織名</label>
+              <input
+                type="text"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                required
+                className="w-full bg-[#252525] border border-[#333] rounded-lg px-3 py-2.5 text-sm text-white placeholder-[#555] focus:outline-none focus:border-indigo-500 transition-colors"
+                placeholder="例：〇〇プロダクション"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-sm text-[#888] mb-1.5">メールアドレス</label>
             <input
@@ -99,7 +168,7 @@ export default function LoginPage() {
         <p className="text-center text-sm text-[#666] mt-4">
           {mode === 'login' ? 'アカウントをお持ちでない方は' : 'すでにアカウントをお持ちの方は'}{' '}
           <button
-            onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+            onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError('') }}
             className="text-indigo-400 hover:text-indigo-300 transition-colors"
           >
             {mode === 'login' ? '新規登録' : 'ログイン'}
@@ -107,5 +176,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full max-w-sm px-6 text-[#666] text-sm text-center">読み込み中...</div>}>
+      <LoginForm />
+    </Suspense>
   )
 }
