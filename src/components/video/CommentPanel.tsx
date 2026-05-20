@@ -3,12 +3,12 @@
 import { useState } from 'react'
 import { MessageSquare, Clock, CheckCircle2, Circle, ChevronRight, Image as ImageIcon, Reply } from 'lucide-react'
 import { formatTimecode, formatRelativeTime, cn } from '@/lib/utils'
-import type { Comment } from '@/lib/types'
+import type { Comment, Annotation } from '@/lib/types'
 
 interface CommentPanelProps {
   comments: Comment[]
   currentVersionId: string
-  onSeek: (time: number) => void
+  onSeek: (time: number, annotation?: Annotation | null) => void
   onResolve: (commentId: string, resolved: boolean) => void
   onReply: (commentId: string) => void
 }
@@ -104,7 +104,7 @@ function CommentItem({
   comment: Comment
   replies: Comment[]
   showTimecode: boolean
-  onSeek: (t: number) => void
+  onSeek: (t: number, annotation?: Annotation | null) => void
   onResolve: (id: string, resolved: boolean) => void
   onReply: (id: string) => void
 }) {
@@ -145,11 +145,12 @@ function CommentItem({
 
             {showTimecode && comment.timecode != null && (
               <button
-                onClick={() => onSeek(comment.timecode!)}
+                onClick={() => onSeek(comment.timecode!, comment.annotation)}
                 className="inline-flex items-center gap-1 bg-indigo-950/60 text-indigo-400 text-xs font-mono px-2 py-0.5 rounded mb-1.5 hover:bg-indigo-900/60 transition-colors"
               >
                 <Clock className="w-3 h-3" />
                 {formatTimecode(comment.timecode)}
+                {comment.annotation && <span className="text-[10px] ml-0.5 opacity-70">●</span>}
               </button>
             )}
 

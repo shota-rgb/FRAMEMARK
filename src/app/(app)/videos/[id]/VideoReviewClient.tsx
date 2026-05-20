@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Pen, Send, Image as ImageIcon, Clock,
@@ -14,8 +14,8 @@ import CommentPanel from '@/components/video/CommentPanel'
 import StatusBadge from '@/components/dashboard/StatusBadge'
 import { createClient } from '@/lib/supabase/client'
 import { formatTimecode, formatFileSize, STATUS_LABELS } from '@/lib/utils'
-import type { Video, VideoVersion, Comment, CommentTemplate, VideoStatus } from '@/lib/types'
-import type { AnnotationCanvasRef } from '@/components/video/AnnotationCanvas'
+import type { Video, VideoVersion, Comment, CommentTemplate, VideoStatus, Annotation } from '@/lib/types'
+import type { AnnotationCanvasRef, DrawShape } from '@/components/video/AnnotationCanvas'
 
 const AnnotationCanvas = dynamic(() => import('@/components/video/AnnotationCanvas'), { ssr: false })
 
@@ -72,8 +72,32 @@ export default function VideoReviewClient({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadFileInputRef = useRef<HTMLInputElement>(null)
   const [videoContainerSize, setVideoContainerSize] = useState({ w: 0, h: 0 })
+  const [pendingAnnotation, setPendingAnnotation] = useState<DrawShape[] | null>(null)
 
-  const handleSeek = useCallback((t: number) => setSeekTo(t), [])
+  const handleSeek = useCallback((time: number, annotation?: Annotation | null) => {
+    setSeekTo(time)
+    if (annotation?.canvas_data) {
+      const data = annotation.canvas_data as { shapes?: DrawShape[] }
+      if (data.shapes?.length) {
+        if (videoContainerRef.current) {
+          setVideoContainerSize({
+            w: videoContainerRef.current.clientWidth,
+            h: videoContainerRef.current.clientHeight,
+          })
+        }
+        setAnnotationMode(true)
+        setPendingAnnotation(data.shapes)
+      }
+    }
+  }, [])
+
+  // アノテーションモードが有効になった後、保留中のシェイプをキャンバスにロード
+  useEffect(() => {
+    if (annotationMode && pendingAnnotation !== null && annotationRef.current) {
+      annotationRef.current.loadShapes(pendingAnnotation)
+      setPendingAnnotation(null)
+    }
+  }, [annotationMode, pendingAnnotation])
 
   const handleResolve = async (commentId: string, resolved: boolean) => {
     const { error } = await supabase

@@ -7,9 +7,10 @@ export interface AnnotationCanvasRef {
   getCanvasData: () => object | null
   undo: () => void
   clear: () => void
+  loadShapes: (shapes: DrawShape[]) => void
 }
 
-interface DrawShape {
+export interface DrawShape {
   type: AnnotationTool
   color: AnnotationColor
   lineWidth: number
@@ -282,6 +283,7 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvasProps>(
       getCanvasData: () => ({ shapes: shapesRef.current }),
       undo() { shapesRef.current.pop(); redraw() },
       clear() { shapesRef.current = []; currentShapeRef.current = null; redraw() },
+      loadShapes(shapes: DrawShape[]) { shapesRef.current = [...shapes]; currentShapeRef.current = null; redraw() },
     }))
 
     // テキストツール用: React合成イベントで確実にstate更新するオーバーレイ

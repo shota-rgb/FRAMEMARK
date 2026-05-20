@@ -1,6 +1,6 @@
 'use client'
 
-import { Hand, Minus, Circle, ArrowRight, Pencil, Type, Undo2, Trash2, X } from 'lucide-react'
+import { Hand, Square, Circle, ArrowRight, Pencil, Type, Undo2, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export type AnnotationTool = 'select' | 'rect' | 'circle' | 'arrow' | 'freehand' | 'text'
@@ -8,7 +8,7 @@ export type AnnotationColor = '#ef4444' | '#f97316' | '#eab308' | '#22c55e' | '#
 
 const TOOLS: { id: AnnotationTool; icon: React.ElementType; label: string }[] = [
   { id: 'select',   icon: Hand,          label: '移動' },
-  { id: 'rect',     icon: Minus,         label: '矩形' },
+  { id: 'rect',     icon: Square,        label: '四角' },
   { id: 'circle',   icon: Circle,        label: '円' },
   { id: 'arrow',    icon: ArrowRight,    label: '矢印' },
   { id: 'freehand', icon: Pencil,        label: 'フリーハンド' },
