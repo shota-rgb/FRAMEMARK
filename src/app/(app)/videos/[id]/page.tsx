@@ -47,18 +47,28 @@ export default async function VideoReviewPage({ params }: Props) {
     .eq('video_id', id)
     .order('timecode', { ascending: true, nullsFirst: false })
 
-  // Get author emails from auth
+  // Get author display names and emails
   const authorIds = [...new Set((commentsRaw ?? []).map((c) => c.author_id))]
   const authorMap: Record<string, { display_name: string | null; email: string }> = {}
 
   if (authorIds.length > 0) {
-    const { data: members } = await supabase
-      .from('workspace_members')
-      .select('user_id, display_name')
-      .in('user_id', authorIds)
+    const [{ data: members }, { data: authEmails }] = await Promise.all([
+      supabase
+        .from('workspace_members')
+        .select('user_id, display_name')
+        .in('user_id', authorIds),
+      supabase.rpc('get_user_emails', { user_ids: authorIds }),
+    ])
 
     ;(members ?? []).forEach((m) => {
       if (m.user_id) authorMap[m.user_id] = { display_name: m.display_name, email: '' }
+    })
+    ;(authEmails ?? []).forEach((u: { id: string; email: string }) => {
+      if (authorMap[u.id]) {
+        authorMap[u.id].email = u.email
+      } else {
+        authorMap[u.id] = { display_name: null, email: u.email }
+      }
     })
   }
 
@@ -92,7 +102,7 @@ export default async function VideoReviewPage({ params }: Props) {
       videoUrl={videoUrl}
       comments={comments}
       templates={templates ?? []}
-      currentUser={{ id: user.id, email: user.email ?? '' }}
+      currentUser={{ id: user.id, email: user.email ?? '', display_name: authorMap[user.id]?.display_name ?? null }}
       isDirector={isDirector}
     />
   )

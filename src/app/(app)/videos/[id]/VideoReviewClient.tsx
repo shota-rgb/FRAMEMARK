@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  ChevronLeft, Pen, Send, Image as ImageIcon, Clock,
+  ChevronLeft, ChevronRight, Pen, Send, Image as ImageIcon, Clock,
   AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown
 } from 'lucide-react'
 import Link from 'next/link'
@@ -26,7 +26,7 @@ interface VideoReviewClientProps {
   videoUrl: string | null
   comments: Comment[]
   templates: CommentTemplate[]
-  currentUser: { id: string; email: string }
+  currentUser: { id: string; email: string; display_name?: string | null }
   isDirector: boolean
 }
 
@@ -124,7 +124,7 @@ export default function VideoReviewClient({
 
       setComments((prev) => [...prev, {
         ...newComment,
-        author: { display_name: null, email: currentUser.email },
+        author: { display_name: currentUser.display_name ?? null, email: currentUser.email },
         annotation: annotationData ? { id: '', comment_id: newComment.id, canvas_data: annotationData as object, created_at: '' } : null,
       }])
 
@@ -292,14 +292,18 @@ export default function VideoReviewClient({
               </div>
             )}
 
-            {replyTo && (
-              <div className="flex items-center gap-2 text-xs text-[#666] mb-2">
-                <span>返信中</span>
-                <button onClick={() => setReplyTo(null)} className="text-indigo-400 hover:text-indigo-300">
-                  キャンセル
-                </button>
-              </div>
-            )}
+            {replyTo && (() => {
+              const parent = comments.find((c) => c.id === replyTo)
+              return (
+                <div className="flex items-center gap-2 text-xs mb-2 bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-3 py-2">
+                  <ChevronRight className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                  <span className="text-[#888] truncate flex-1">
+                    {parent?.author?.display_name ?? parent?.author?.email ?? '不明'}:&nbsp;{parent?.content}
+                  </span>
+                  <button onClick={() => setReplyTo(null)} className="text-[#555] hover:text-white flex-shrink-0 ml-1">×</button>
+                </div>
+              )
+            })()}
 
             <div className="flex gap-2">
               <textarea
@@ -392,6 +396,7 @@ export default function VideoReviewClient({
             currentVersionId={latestVersion?.id ?? ''}
             onSeek={handleSeek}
             onResolve={handleResolve}
+            onReply={(id) => setReplyTo(id)}
           />
         </div>
       </div>

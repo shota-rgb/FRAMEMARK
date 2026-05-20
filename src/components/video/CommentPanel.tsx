@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, Clock, CheckCircle2, Circle, ChevronRight, Image as ImageIcon } from 'lucide-react'
+import { MessageSquare, Clock, CheckCircle2, Circle, ChevronRight, Image as ImageIcon, Reply } from 'lucide-react'
 import { formatTimecode, formatRelativeTime, cn } from '@/lib/utils'
 import type { Comment } from '@/lib/types'
 
@@ -10,11 +10,16 @@ interface CommentPanelProps {
   currentVersionId: string
   onSeek: (time: number) => void
   onResolve: (commentId: string, resolved: boolean) => void
+  onReply: (commentId: string) => void
 }
 
 type Filter = 'all' | 'unresolved' | 'resolved'
 
-export default function CommentPanel({ comments, currentVersionId, onSeek, onResolve }: CommentPanelProps) {
+function authorLabel(author?: { display_name: string | null; email: string }) {
+  return author?.display_name || author?.email || '不明'
+}
+
+export default function CommentPanel({ comments, currentVersionId, onSeek, onResolve, onReply }: CommentPanelProps) {
   const [filter, setFilter] = useState<Filter>('all')
   const [showTimecode, setShowTimecode] = useState(true)
 
@@ -36,17 +41,15 @@ export default function CommentPanel({ comments, currentVersionId, onSeek, onRes
             コメント <span className="text-[#555]">({comments.length})</span>
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowTimecode(!showTimecode)}
-            className={cn('p-1 rounded text-xs transition-colors flex items-center gap-1',
-              showTimecode ? 'text-indigo-400' : 'text-[#555] hover:text-white'
-            )}
-            title="タイムコード表示切替"
-          >
-            <Clock className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        <button
+          onClick={() => setShowTimecode(!showTimecode)}
+          className={cn('p-1 rounded text-xs transition-colors flex items-center gap-1',
+            showTimecode ? 'text-indigo-400' : 'text-[#555] hover:text-white'
+          )}
+          title="タイムコード表示切替"
+        >
+          <Clock className="w-3.5 h-3.5" />
+        </button>
       </div>
 
       {/* Filter tabs */}
@@ -81,6 +84,7 @@ export default function CommentPanel({ comments, currentVersionId, onSeek, onRes
               showTimecode={showTimecode}
               onSeek={onSeek}
               onResolve={onResolve}
+              onReply={onReply}
             />
           ))
         )}
@@ -95,14 +99,16 @@ function CommentItem({
   showTimecode,
   onSeek,
   onResolve,
+  onReply,
 }: {
   comment: Comment
   replies: Comment[]
   showTimecode: boolean
   onSeek: (t: number) => void
   onResolve: (id: string, resolved: boolean) => void
+  onReply: (id: string) => void
 }) {
-  const [showReplies, setShowReplies] = useState(false)
+  const [showReplies, setShowReplies] = useState(true)
 
   return (
     <div className={cn(
@@ -129,8 +135,8 @@ function CommentItem({
 
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
-              <span className="text-xs text-[#666]">
-                {comment.author?.display_name ?? comment.author?.email ?? '不明'}
+              <span className="text-xs font-medium text-[#aaa]">
+                {authorLabel(comment.author)}
               </span>
               <span className="text-xs text-[#444]">
                 {formatRelativeTime(comment.created_at)}
@@ -155,6 +161,14 @@ function CommentItem({
                 マーキングあり
               </span>
             )}
+
+            <button
+              onClick={() => onReply(comment.id)}
+              className="inline-flex items-center gap-1 text-xs text-[#555] hover:text-indigo-400 mt-2 transition-colors"
+            >
+              <Reply className="w-3.5 h-3.5" />
+              返信
+            </button>
           </div>
         </div>
       </div>
@@ -163,17 +177,20 @@ function CommentItem({
         <div className="border-t border-[#222] px-3 py-2">
           <button
             onClick={() => setShowReplies(!showReplies)}
-            className="flex items-center gap-1 text-xs text-[#555] hover:text-white transition-colors"
+            className="flex items-center gap-1 text-xs text-[#555] hover:text-white transition-colors mb-2"
           >
             <ChevronRight className={cn('w-3.5 h-3.5 transition-transform', showReplies && 'rotate-90')} />
             返信 {replies.length}件
           </button>
           {showReplies && (
-            <div className="mt-2 space-y-2 pl-3 border-l border-[#2a2a2a]">
+            <div className="space-y-2 pl-3 border-l border-[#2a2a2a]">
               {replies.map((r) => (
-                <div key={r.id} className="text-sm">
-                  <span className="text-xs text-[#555] mr-2">{r.author?.display_name ?? r.author?.email ?? '不明'}</span>
-                  <span className="text-[#ccc]">{r.content}</span>
+                <div key={r.id} className="py-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-[#888]">{authorLabel(r.author)}</span>
+                    <span className="text-xs text-[#444]">{formatRelativeTime(r.created_at)}</span>
+                  </div>
+                  <p className="text-xs text-[#ccc] leading-relaxed whitespace-pre-wrap">{r.content}</p>
                 </div>
               ))}
             </div>
