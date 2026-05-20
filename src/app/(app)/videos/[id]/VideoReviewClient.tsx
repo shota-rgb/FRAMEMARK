@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Pen, Send, Image as ImageIcon, Clock,
-  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload, X
+  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload, X, Ban
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -18,6 +18,30 @@ import type { Video, VideoVersion, Comment, CommentTemplate, VideoStatus, Annota
 import type { AnnotationCanvasRef, DrawShape } from '@/components/video/AnnotationCanvas'
 
 const AnnotationCanvas = dynamic(() => import('@/components/video/AnnotationCanvas'), { ssr: false })
+
+async function captureVideoThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(file)
+    video.src = url
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'metadata'
+    const cleanup = () => URL.revokeObjectURL(url)
+    video.onloadedmetadata = () => {
+      video.currentTime = Math.min(0.5, video.duration / 2)
+    }
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas')
+      const w = Math.min(video.videoWidth, 640)
+      canvas.width = w
+      canvas.height = Math.round(w * video.videoHeight / video.videoWidth)
+      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => { cleanup(); resolve(blob) }, 'image/jpeg', 0.85)
+    }
+    video.onerror = () => { cleanup(); resolve(null) }
+  })
+}
 
 interface VideoReviewClientProps {
   video: Video
@@ -64,6 +88,7 @@ export default function VideoReviewClient({
   const [videoStatus, setVideoStatus] = useState<VideoStatus>(video.status)
   const [showVersions, setShowVersions] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
+  const [showCancelModal, setShowCancelModal] = useState(false)
   const [showUploadModal, setShowUploadModal] = useState(false)
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -195,12 +220,23 @@ export default function VideoReviewClient({
       const { error: storageErr } = await supabase.storage.from('videos').upload(path, uploadFile)
       if (storageErr) throw new Error('動画のアップロードに失敗しました')
 
+      let thumbnailPath: string | null = null
+      const thumbnailBlob = await captureVideoThumbnail(uploadFile)
+      if (thumbnailBlob) {
+        const thumbPath = `thumbnails/${video.workspace_id}/${video.id}/v${nextVersion}.jpg`
+        const { error: thumbErr } = await supabase.storage
+          .from('images')
+          .upload(thumbPath, thumbnailBlob, { contentType: 'image/jpeg', upsert: true })
+        if (!thumbErr) thumbnailPath = thumbPath
+      }
+
       const { error: versionErr } = await supabase.from('video_versions').insert({
         video_id: video.id,
         version_number: nextVersion,
         storage_path: path,
         file_name: uploadFile.name,
         file_size: uploadFile.size,
+        thumbnail_path: thumbnailPath,
         uploaded_by: currentUser.id,
       })
       if (versionErr) {
@@ -303,6 +339,17 @@ export default function VideoReviewClient({
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-green-700 hover:bg-green-600 transition-colors"
           >
             校了
+          </button>
+        )}
+
+        {/* フロー終了 — 両ロール共通、approved/cancelled 以外で表示 */}
+        {videoStatus !== 'approved' && videoStatus !== 'cancelled' && (
+          <button
+            onClick={() => setShowCancelModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-[#666] hover:text-red-400 hover:bg-red-950/30 border border-transparent hover:border-red-900/50 transition-colors"
+          >
+            <Ban className="w-3.5 h-3.5" />
+            フロー終了
           </button>
         )}
       </div>
@@ -508,6 +555,39 @@ export default function VideoReviewClient({
           />
         </div>
       </div>
+
+      {/* Cancel flow modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-2xl p-6 max-w-sm w-full mx-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Ban className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <h2 className="text-white font-semibold text-lg">校正フローを終了しますか？</h2>
+            </div>
+            <p className="text-[#666] text-sm mb-5 leading-relaxed">
+              この操作は取り消せません。フローを終了すると、ステータスが「終了」になり、以降のステータス変更ができなくなります。
+              コメントと修正履歴は保持されます。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowCancelModal(false)}
+                className="flex-1 bg-[#2a2a2a] hover:bg-[#333] text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+              >
+                戻る
+              </button>
+              <button
+                onClick={async () => {
+                  await handleStatusChange('cancelled')
+                  setShowCancelModal(false)
+                }}
+                className="flex-1 bg-red-700 hover:bg-red-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+              >
+                フローを終了する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Approve modal */}
       {showApproveModal && (

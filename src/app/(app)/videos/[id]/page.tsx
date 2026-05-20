@@ -95,6 +95,14 @@ export default async function VideoReviewPage({ params }: Props) {
 
   const isDirector = workspace?.owner_id === user.id
 
+  // Mark this video as seen at its current status (clears the sidebar badge for action-required statuses)
+  if (['review', 'revised', 'revision_requested'].includes(video.status)) {
+    await supabase.from('video_status_seen').upsert(
+      { user_id: user.id, video_id: id, seen_status: video.status, seen_at: new Date().toISOString() },
+      { onConflict: 'user_id,video_id' }
+    )
+  }
+
   return (
     <VideoReviewClient
       video={video}

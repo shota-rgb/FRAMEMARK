@@ -70,13 +70,13 @@ export default async function DashboardPage() {
     .from('videos')
     .select(`
       *,
-      video_versions(id, version_number, file_size, file_name, is_deleted, created_at),
+      video_versions(id, version_number, file_size, file_name, is_deleted, thumbnail_path, created_at),
       comments(id)
     `)
     .eq('workspace_id', workspace.id)
     .order('updated_at', { ascending: false })
 
-  const enrichedVideos = (videos ?? []).map((v) => {
+  const rawEnriched = (videos ?? []).map((v) => {
     const versions = (v.video_versions ?? []).sort(
       (a: { version_number: number }, b: { version_number: number }) => b.version_number - a.version_number
     )
@@ -87,6 +87,28 @@ export default async function DashboardPage() {
       commentCount: v.comments?.length ?? 0,
     }
   })
+
+  // Batch-sign thumbnail URLs
+  const thumbnailPaths = rawEnriched
+    .filter((v) => v.latestVersion?.thumbnail_path && !v.latestVersion?.is_deleted)
+    .map((v) => v.latestVersion!.thumbnail_path as string)
+
+  const thumbnailUrlMap: Record<string, string> = {}
+  if (thumbnailPaths.length > 0) {
+    const { data: signed } = await supabase.storage
+      .from('images')
+      .createSignedUrls(thumbnailPaths, 3600)
+    signed?.forEach(({ path, signedUrl }) => {
+      if (path && signedUrl) thumbnailUrlMap[path] = signedUrl
+    })
+  }
+
+  const enrichedVideos = rawEnriched.map((v) => ({
+    ...v,
+    thumbnailUrl: v.latestVersion?.thumbnail_path
+      ? (thumbnailUrlMap[v.latestVersion.thumbnail_path] ?? null)
+      : null,
+  }))
 
   const summary = {
     total: enrichedVideos.length,

@@ -292,3 +292,54 @@ CREATE POLICY "images_insert" ON storage.objects FOR INSERT TO authenticated WIT
 CREATE POLICY "images_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'images');
 CREATE POLICY "images_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'images');
 CREATE POLICY "images_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'images');
+
+-- =====================
+-- video_status_seen: tracks which video/status combos have been opened per user
+-- Run this block in Supabase Dashboard > SQL Editor
+-- =====================
+CREATE TABLE IF NOT EXISTS video_status_seen (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  video_id UUID REFERENCES videos(id) ON DELETE CASCADE,
+  seen_status TEXT NOT NULL,
+  seen_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  PRIMARY KEY (user_id, video_id)
+);
+
+ALTER TABLE video_status_seen ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "status_seen_select" ON video_status_seen FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "status_seen_insert" ON video_status_seen FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "status_seen_update" ON video_status_seen FOR UPDATE USING (user_id = auth.uid());
+
+-- Returns unseen action-required video count for a given user
+CREATE OR REPLACE FUNCTION get_unseen_action_count(uid UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  action_count INTEGER;
+  is_dir BOOLEAN;
+BEGIN
+  SELECT EXISTS (SELECT 1 FROM workspaces WHERE owner_id = uid) INTO is_dir;
+  IF is_dir THEN
+    SELECT COUNT(*) INTO action_count
+    FROM videos v
+    WHERE v.workspace_id IN (SELECT id FROM workspaces WHERE owner_id = uid)
+      AND v.status IN ('review', 'revised')
+      AND NOT EXISTS (
+        SELECT 1 FROM video_status_seen s
+        WHERE s.user_id = uid AND s.video_id = v.id AND s.seen_status = v.status
+      );
+  ELSE
+    SELECT COUNT(*) INTO action_count
+    FROM videos v
+    WHERE v.workspace_id IN (
+        SELECT workspace_id FROM workspace_members WHERE user_id = uid AND is_accepted = true
+      )
+      AND v.status = 'revision_requested'
+      AND NOT EXISTS (
+        SELECT 1 FROM video_status_seen s
+        WHERE s.user_id = uid AND s.video_id = v.id AND s.seen_status = v.status
+      );
+  END IF;
+  RETURN COALESCE(action_count, 0);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;

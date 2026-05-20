@@ -48,6 +48,7 @@ export const STATUS_LABELS: Record<VideoStatus, string> = {
   revision_requested: '修正依頼済',
   revised: '修正済み',
   approved: '校了',
+  cancelled: '終了',
 }
 
 export const STATUS_COLORS: Record<VideoStatus, string> = {
@@ -56,4 +57,5 @@ export const STATUS_COLORS: Record<VideoStatus, string> = {
   revision_requested: 'bg-red-900/60 text-red-400',
   revised: 'bg-blue-900/60 text-blue-400',
   approved: 'bg-green-900/60 text-green-400',
+  cancelled: 'bg-zinc-800 text-zinc-500',
 }

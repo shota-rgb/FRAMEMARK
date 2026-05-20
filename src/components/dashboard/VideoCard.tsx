@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { MessageSquare, HardDrive, Clock } from 'lucide-react'
 import StatusBadge from './StatusBadge'
 import { formatFileSize, formatRelativeTime } from '@/lib/utils'
@@ -8,6 +9,7 @@ interface VideoCardProps {
   video: Video & {
     latestVersion?: { file_size: number; version_number: number } | null
     commentCount?: number
+    thumbnailUrl?: string | null
   }
   view: 'grid' | 'list'
   requiresAction?: boolean
@@ -21,7 +23,11 @@ export default function VideoCard({ video, view, requiresAction }: VideoCardProp
         className="flex items-center gap-4 px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl hover:border-[#444] hover:bg-[#1e1e1e] transition-all group"
       >
         <div className="w-28 h-16 bg-[#252525] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
-          <span className="text-[#444] text-xs">動画</span>
+          {video.thumbnailUrl ? (
+            <Image src={video.thumbnailUrl} alt={video.title} fill className="object-cover" unoptimized />
+          ) : (
+            <span className="text-[#444] text-xs">動画</span>
+          )}
           {requiresAction && (
             <span className="absolute top-1 left-1 w-2 h-2 bg-indigo-500 rounded-full" />
           )}
@@ -65,7 +71,11 @@ export default function VideoCard({ video, view, requiresAction }: VideoCardProp
       className="block bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden hover:border-[#444] hover:bg-[#1e1e1e] transition-all group"
     >
       <div className="aspect-video bg-[#252525] flex items-center justify-center relative">
-        <span className="text-[#444] text-sm">動画</span>
+        {video.thumbnailUrl ? (
+          <Image src={video.thumbnailUrl} alt={video.title} fill className="object-cover" unoptimized />
+        ) : (
+          <span className="text-[#444] text-sm">動画</span>
+        )}
         <div className="absolute top-2 right-2">
           <StatusBadge status={video.status} />
         </div>

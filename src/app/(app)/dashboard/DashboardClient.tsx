@@ -11,6 +11,7 @@ type EnrichedVideo = Video & {
   video_versions: VideoVersion[]
   latestVersion: VideoVersion | null
   commentCount: number
+  thumbnailUrl?: string | null
 }
 
 const STATUS_FILTERS: VideoStatus[] = [
@@ -19,6 +20,7 @@ const STATUS_FILTERS: VideoStatus[] = [
   'revision_requested',
   'revised',
   'approved',
+  'cancelled',
 ]
 
 interface DashboardClientProps {

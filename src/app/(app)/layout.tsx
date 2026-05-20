@@ -22,39 +22,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     userRole = owned ? 'director' : 'editor'
   }
 
-  // Count action-required videos directly from video status
-  let actionCount = 0
-  if (userRole === 'director') {
-    const { data: ws } = await supabase
-      .from('workspaces')
-      .select('id')
-      .eq('owner_id', user.id)
-      .limit(1)
-      .single()
-    if (ws) {
-      const { count } = await supabase
-        .from('videos')
-        .select('*', { count: 'exact', head: true })
-        .eq('workspace_id', ws.id)
-        .in('status', ['review', 'revised'])
-      actionCount = count ?? 0
-    }
-  } else {
-    const { data: memberships } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', user.id)
-      .eq('is_accepted', true)
-    if (memberships && memberships.length > 0) {
-      const wsIds = memberships.map((m) => m.workspace_id)
-      const { count } = await supabase
-        .from('videos')
-        .select('*', { count: 'exact', head: true })
-        .in('workspace_id', wsIds)
-        .eq('status', 'revision_requested')
-      actionCount = count ?? 0
-    }
-  }
+  // Count unseen action-required videos via RPC (clears when user opens the video)
+  const { data: actionData } = await supabase.rpc('get_unseen_action_count', { uid: user.id })
+  const actionCount = (actionData as number | null) ?? 0
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#0d0d0d]">

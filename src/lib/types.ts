@@ -6,6 +6,7 @@ export type VideoStatus =
   | 'revision_requested'
   | 'revised'
   | 'approved'
+  | 'cancelled'
 
 export type NotificationType =
   | 'comment_added'

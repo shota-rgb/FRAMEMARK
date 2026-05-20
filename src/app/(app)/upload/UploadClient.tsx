@@ -13,6 +13,30 @@ interface UploadClientProps {
 
 type UploadState = 'idle' | 'uploading' | 'success' | 'error'
 
+async function captureVideoThumbnail(file: File): Promise<Blob | null> {
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    const url = URL.createObjectURL(file)
+    video.src = url
+    video.muted = true
+    video.playsInline = true
+    video.preload = 'metadata'
+    const cleanup = () => URL.revokeObjectURL(url)
+    video.onloadedmetadata = () => {
+      video.currentTime = Math.min(0.5, video.duration / 2)
+    }
+    video.onseeked = () => {
+      const canvas = document.createElement('canvas')
+      const w = Math.min(video.videoWidth, 640)
+      canvas.width = w
+      canvas.height = Math.round(w * video.videoHeight / video.videoWidth)
+      canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height)
+      canvas.toBlob((blob) => { cleanup(); resolve(blob) }, 'image/jpeg', 0.85)
+    }
+    video.onerror = () => { cleanup(); resolve(null) }
+  })
+}
+
 export default function UploadClient({ workspaceId, userId }: UploadClientProps) {
   const router = useRouter()
   const supabase = createClient()
@@ -74,7 +98,18 @@ export default function UploadClient({ workspaceId, userId }: UploadClientProps)
         throw uploadErr
       }
 
-      // 3. Create video version record
+      // 3. Capture thumbnail and upload
+      let thumbnailPath: string | null = null
+      const thumbnailBlob = await captureVideoThumbnail(file)
+      if (thumbnailBlob) {
+        const thumbPath = `thumbnails/${workspaceId}/${video.id}/v1.jpg`
+        const { error: thumbErr } = await supabase.storage
+          .from('images')
+          .upload(thumbPath, thumbnailBlob, { contentType: 'image/jpeg', upsert: true })
+        if (!thumbErr) thumbnailPath = thumbPath
+      }
+
+      // 4. Create video version record
       const { error: versionErr } = await supabase
         .from('video_versions')
         .insert({
@@ -83,11 +118,12 @@ export default function UploadClient({ workspaceId, userId }: UploadClientProps)
           storage_path: storagePath,
           file_name: file.name,
           file_size: file.size,
+          thumbnail_path: thumbnailPath,
           uploaded_by: userId,
         })
       if (versionErr) throw versionErr
 
-      // 4. Update video status to review
+      // 5. Update video status to review
       await supabase.from('videos').update({ status: 'review' }).eq('id', video.id)
 
       setState('success')
