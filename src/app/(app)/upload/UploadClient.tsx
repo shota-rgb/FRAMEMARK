@@ -69,7 +69,10 @@ export default function UploadClient({ workspaceId, userId }: UploadClientProps)
 
       clearInterval(progressInterval)
       setProgress(100)
-      if (uploadErr) throw uploadErr
+      if (uploadErr) {
+        await supabase.from('videos').delete().eq('id', video.id)
+        throw uploadErr
+      }
 
       // 3. Create video version record
       const { error: versionErr } = await supabase

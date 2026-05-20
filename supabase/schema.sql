@@ -279,3 +279,16 @@ CREATE POLICY "notifications_update" ON notifications FOR UPDATE USING (user_id 
 -- Create bucket "videos" (public: false, file size: 5000MB)
 -- Create bucket "images" (public: false, file size: 50MB)
 -- =====================
+
+-- =====================
+-- Storage RLS policies (run after creating buckets)
+-- =====================
+CREATE POLICY "videos_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'videos');
+CREATE POLICY "videos_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'videos');
+CREATE POLICY "videos_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'videos');
+CREATE POLICY "videos_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'videos');
+
+CREATE POLICY "images_insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'images');
+CREATE POLICY "images_select" ON storage.objects FOR SELECT TO authenticated USING (bucket_id = 'images');
+CREATE POLICY "images_update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'images');
+CREATE POLICY "images_delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'images');
