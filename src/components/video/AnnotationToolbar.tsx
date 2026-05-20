@@ -1,17 +1,18 @@
 'use client'
 
-import { Minus, Circle, ArrowRight, Pencil, Type, Undo2, Trash2, X } from 'lucide-react'
+import { Hand, Minus, Circle, ArrowRight, Pencil, Type, Undo2, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
-export type AnnotationTool = 'rect' | 'circle' | 'arrow' | 'freehand' | 'text'
+export type AnnotationTool = 'select' | 'rect' | 'circle' | 'arrow' | 'freehand' | 'text'
 export type AnnotationColor = '#ef4444' | '#f97316' | '#eab308' | '#22c55e' | '#3b82f6' | '#a855f7' | '#ffffff'
 
 const TOOLS: { id: AnnotationTool; icon: React.ElementType; label: string }[] = [
-  { id: 'rect', icon: Minus, label: '矩形' },
-  { id: 'circle', icon: Circle, label: '円' },
-  { id: 'arrow', icon: ArrowRight, label: '矢印' },
-  { id: 'freehand', icon: Pencil, label: 'フリーハンド' },
-  { id: 'text', icon: Type, label: 'テキスト' },
+  { id: 'select',   icon: Hand,          label: '移動' },
+  { id: 'rect',     icon: Minus,         label: '矩形' },
+  { id: 'circle',   icon: Circle,        label: '円' },
+  { id: 'arrow',    icon: ArrowRight,    label: '矢印' },
+  { id: 'freehand', icon: Pencil,        label: 'フリーハンド' },
+  { id: 'text',     icon: Type,          label: 'テキスト' },
 ]
 
 const COLORS: AnnotationColor[] = [
@@ -68,25 +69,13 @@ export default function AnnotationToolbar({
 
       <div className="flex-1" />
 
-      <button
-        onClick={onUndo}
-        title="元に戻す"
-        className="p-1.5 rounded-lg text-[#666] hover:text-white hover:bg-[#252525] transition-colors"
-      >
+      <button onClick={onUndo} title="元に戻す" className="p-1.5 rounded-lg text-[#666] hover:text-white hover:bg-[#252525] transition-colors">
         <Undo2 className="w-4 h-4" />
       </button>
-      <button
-        onClick={onClear}
-        title="すべて消去"
-        className="p-1.5 rounded-lg text-[#666] hover:text-red-400 hover:bg-[#252525] transition-colors"
-      >
+      <button onClick={onClear} title="すべて消去" className="p-1.5 rounded-lg text-[#666] hover:text-red-400 hover:bg-[#252525] transition-colors">
         <Trash2 className="w-4 h-4" />
       </button>
-      <button
-        onClick={onClose}
-        title="アノテーションモードを終了"
-        className="p-1.5 rounded-lg text-[#666] hover:text-white hover:bg-[#252525] transition-colors"
-      >
+      <button onClick={onClose} title="アノテーションモードを終了" className="p-1.5 rounded-lg text-[#666] hover:text-white hover:bg-[#252525] transition-colors">
         <X className="w-4 h-4" />
       </button>
     </div>

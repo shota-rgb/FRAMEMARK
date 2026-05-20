@@ -50,7 +50,7 @@ export default function VideoReviewClient({
   const [currentTime, setCurrentTime] = useState(0)
   const [seekTo, setSeekTo] = useState<number | null>(null)
   const [annotationMode, setAnnotationMode] = useState(false)
-  const [activeTool, setActiveTool] = useState<AnnotationTool>('rect')
+  const [activeTool, setActiveTool] = useState<AnnotationTool>('select')
   const [activeColor, setActiveColor] = useState<AnnotationColor>('#ef4444')
   const [commentText, setCommentText] = useState('')
   const [attachTimecode, setAttachTimecode] = useState(true)

@@ -61,11 +61,32 @@ export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo }: Video
     v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + sec))
   }, [])
 
-  const handleTimeUpdate = useCallback(() => {
+  // duration / timeupdate をネイティブリスナーで取得
+  // （loadedmetadata は React ハンドラ登録前に発火することがあるため）
+  useEffect(() => {
     const v = videoRef.current
     if (!v) return
-    setCurrentTime(v.currentTime)
-    onTimeUpdate?.(v.currentTime)
+
+    const syncDuration = () => {
+      if (v.duration > 0 && isFinite(v.duration)) setDuration(v.duration)
+    }
+    const syncTime = () => {
+      setCurrentTime(v.currentTime)
+      onTimeUpdate?.(v.currentTime)
+    }
+
+    v.addEventListener('loadedmetadata', syncDuration)
+    v.addEventListener('durationchange', syncDuration)
+    v.addEventListener('timeupdate', syncTime)
+
+    // すでにロード済みの場合に即時反映
+    syncDuration()
+
+    return () => {
+      v.removeEventListener('loadedmetadata', syncDuration)
+      v.removeEventListener('durationchange', syncDuration)
+      v.removeEventListener('timeupdate', syncTime)
+    }
   }, [onTimeUpdate])
 
   const handleProgressClick = useCallback((e: React.MouseEvent) => {
@@ -123,8 +144,6 @@ export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo }: Video
         ref={videoRef}
         src={src}
         className="max-w-full max-h-full block"
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
         onEnded={() => setPlaying(false)}
