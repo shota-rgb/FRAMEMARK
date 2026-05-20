@@ -30,10 +30,15 @@ interface VideoReviewClientProps {
   isDirector: boolean
 }
 
-// Director-only status transitions
+// Director: which statuses allow which one-click transitions
 const DIRECTOR_TRANSITIONS: Partial<Record<VideoStatus, { label: string; next: VideoStatus; color: string }>> = {
-  review: { label: '修正依頼を送る', next: 'revision_requested', color: 'bg-red-600 hover:bg-red-500' },
-  revised: { label: '再レビューする', next: 'review', color: 'bg-amber-600 hover:bg-amber-500' },
+  review:  { label: '修正依頼を送る', next: 'revision_requested', color: 'bg-red-600 hover:bg-red-500' },
+  revised: { label: '再レビューする', next: 'review',             color: 'bg-amber-600 hover:bg-amber-500' },
+}
+
+// Editor: which statuses allow which one-click transitions
+const EDITOR_TRANSITIONS: Partial<Record<VideoStatus, { label: string; next: VideoStatus; color: string }>> = {
+  draft: { label: 'レビュー申請', next: 'review', color: 'bg-indigo-600 hover:bg-indigo-500' },
 }
 
 export default function VideoReviewClient({
@@ -195,6 +200,7 @@ export default function VideoReviewClient({
   }
 
   const directorTransition = DIRECTOR_TRANSITIONS[videoStatus]
+  const editorTransition = EDITOR_TRANSITIONS[videoStatus]
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -239,7 +245,15 @@ export default function VideoReviewClient({
           履歴
         </Link>
 
-        {/* Editor: upload revised version */}
+        {/* ── Editor actions ── */}
+        {!isDirector && editorTransition && (
+          <button
+            onClick={() => handleStatusChange(editorTransition.next)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-colors ${editorTransition.color}`}
+          >
+            {editorTransition.label}
+          </button>
+        )}
         {!isDirector && videoStatus === 'revision_requested' && (
           <button
             onClick={() => { setShowUploadModal(true); setUploadError(null) }}
@@ -250,7 +264,7 @@ export default function VideoReviewClient({
           </button>
         )}
 
-        {/* Director: status transitions */}
+        {/* ── Director actions ── */}
         {isDirector && directorTransition && (
           <button
             onClick={() => handleStatusChange(directorTransition.next)}
@@ -259,8 +273,7 @@ export default function VideoReviewClient({
             {directorTransition.label}
           </button>
         )}
-
-        {isDirector && videoStatus === 'revised' && (
+        {isDirector && (videoStatus === 'review' || videoStatus === 'revised') && (
           <button
             onClick={() => setShowApproveModal(true)}
             className="px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-green-700 hover:bg-green-600 transition-colors"

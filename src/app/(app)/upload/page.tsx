@@ -7,24 +7,41 @@ export default async function UploadPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: workspace } = await supabase
-    .from('workspaces')
-    .select('id, name')
-    .or(`owner_id.eq.${user.id}`)
-    .single()
-
-  if (!workspace) {
-    // Try member workspace
-    const { data: member } = await supabase
-      .from('workspace_members')
-      .select('workspace_id')
-      .eq('user_id', user.id)
+  // Determine role
+  const userRole = user.user_metadata?.role as string | undefined
+  let isDirector = userRole === 'director'
+  if (!userRole) {
+    const { data: owned } = await supabase
+      .from('workspaces')
+      .select('id')
+      .eq('owner_id', user.id)
+      .limit(1)
       .single()
-
-    if (!member) return <div className="p-8 text-[#888]">ワークスペースが見つかりません</div>
-
-    return <UploadClient workspaceId={member.workspace_id} userId={user.id} />
+    isDirector = !!owned
   }
 
-  return <UploadClient workspaceId={workspace.id} userId={user.id} />
+  if (isDirector) {
+    redirect('/dashboard')
+  }
+
+  // Get editor's workspace
+  const { data: memberRow } = await supabase
+    .from('workspace_members')
+    .select('workspace_id')
+    .eq('user_id', user.id)
+    .eq('is_accepted', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (!memberRow) {
+    return (
+      <div className="p-8 text-center text-[#666]">
+        <p className="text-sm">まだ組織に参加していません。</p>
+        <p className="text-sm mt-1">ディレクターから招待リンクを受け取って組織に参加してください。</p>
+      </div>
+    )
+  }
+
+  return <UploadClient workspaceId={memberRow.workspace_id} userId={user.id} />
 }

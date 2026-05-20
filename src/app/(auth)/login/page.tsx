@@ -38,7 +38,7 @@ function LoginForm() {
           setLoading(false)
           return
         }
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -50,7 +50,13 @@ function LoginForm() {
           },
         })
         if (error) throw error
-        setError('確認メールを送信しました。メールを確認してください。')
+        if (signUpData.session) {
+          // Email confirmation disabled — user is signed in immediately
+          router.push(next)
+          router.refresh()
+        } else {
+          setError('確認メールを送信しました。メールを確認してください。')
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました')

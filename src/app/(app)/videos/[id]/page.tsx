@@ -56,6 +56,7 @@ export default async function VideoReviewPage({ params }: Props) {
       supabase
         .from('workspace_members')
         .select('user_id, display_name')
+        .eq('workspace_id', video.workspace_id)
         .in('user_id', authorIds),
       supabase.rpc('get_user_emails', { user_ids: authorIds }),
     ])

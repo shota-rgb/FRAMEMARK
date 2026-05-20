@@ -6,21 +6,23 @@ import { Film, LayoutDashboard, Upload, Users, Settings, LogOut, Bell } from 'lu
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { href: '/dashboard', icon: LayoutDashboard, label: 'ダッシュボード' },
-  { href: '/upload', icon: Upload, label: 'アップロード' },
-  { href: '/members', icon: Users, label: 'メンバー' },
-  { href: '/settings', icon: Settings, label: '設定' },
-]
-
 interface SidebarProps {
   unreadCount?: number
+  userRole?: string
 }
 
-export default function Sidebar({ unreadCount = 0 }: SidebarProps) {
+export default function Sidebar({ unreadCount = 0, userRole }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const isEditor = userRole === 'editor'
+
+  const navItems = [
+    { href: '/dashboard',  icon: LayoutDashboard, label: 'ダッシュボード', show: true },
+    { href: '/upload',     icon: Upload,          label: 'アップロード',   show: isEditor },
+    { href: '/members',    icon: Users,           label: 'メンバー管理',   show: !isEditor },
+    { href: '/settings',   icon: Settings,        label: '設定',           show: true },
+  ]
 
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -36,7 +38,7 @@ export default function Sidebar({ unreadCount = 0 }: SidebarProps) {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map(({ href, icon: Icon, label }) => (
+        {navItems.filter((item) => item.show).map(({ href, icon: Icon, label }) => (
           <Link
             key={href}
             href={href}
