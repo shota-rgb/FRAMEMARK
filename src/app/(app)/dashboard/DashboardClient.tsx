@@ -33,6 +33,11 @@ export default function DashboardClient({ videos, workspace, summary, isDirector
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<VideoStatus | 'all'>('all')
 
+  const actionRequiredStatuses: VideoStatus[] = isDirector
+    ? ['review', 'revised']
+    : ['revision_requested']
+  const pendingCount = videos.filter((v) => actionRequiredStatuses.includes(v.status)).length
+
   const filtered = videos.filter((v) => {
     const matchSearch = v.title.toLowerCase().includes(search.toLowerCase())
     const matchStatus = statusFilter === 'all' || v.status === statusFilter
@@ -50,15 +55,16 @@ export default function DashboardClient({ videos, workspace, summary, isDirector
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-5 gap-3 mb-6">
         {[
-          { label: '合計', value: summary.total, color: 'text-white' },
-          { label: 'レビュー中', value: summary.review, color: 'text-amber-400' },
-          { label: '修正依頼済', value: summary.revision_requested, color: 'text-red-400' },
-          { label: '校了', value: summary.approved, color: 'text-green-400' },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-4 py-3">
-            <p className="text-[#666] text-xs mb-1">{label}</p>
+          { label: '合計',      value: summary.total,                color: 'text-white',     highlight: false },
+          { label: 'レビュー中', value: summary.review,               color: 'text-amber-400', highlight: false },
+          { label: '修正依頼済', value: summary.revision_requested,   color: 'text-red-400',   highlight: false },
+          { label: '校了',      value: summary.approved,             color: 'text-green-400', highlight: false },
+          { label: '要対応',    value: pendingCount,                 color: pendingCount > 0 ? 'text-indigo-400' : 'text-[#555]', highlight: pendingCount > 0 },
+        ].map(({ label, value, color, highlight }) => (
+          <div key={label} className={`rounded-xl px-4 py-3 border transition-colors ${highlight ? 'bg-indigo-950/30 border-indigo-800/50' : 'bg-[#1a1a1a] border-[#2a2a2a]'}`}>
+            <p className={`text-xs mb-1 ${highlight ? 'text-indigo-400/70' : 'text-[#666]'}`}>{label}</p>
             <p className={`text-2xl font-bold ${color}`}>{value}</p>
           </div>
         ))}
@@ -118,13 +124,13 @@ export default function DashboardClient({ videos, workspace, summary, isDirector
       ) : view === 'grid' ? (
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {filtered.map((v) => (
-            <VideoCard key={v.id} video={v} view="grid" />
+            <VideoCard key={v.id} video={v} view="grid" requiresAction={actionRequiredStatuses.includes(v.status)} />
           ))}
         </div>
       ) : (
         <div className="space-y-2">
           {filtered.map((v) => (
-            <VideoCard key={v.id} video={v} view="list" />
+            <VideoCard key={v.id} video={v} view="list" requiresAction={actionRequiredStatuses.includes(v.status)} />
           ))}
         </div>
       )}

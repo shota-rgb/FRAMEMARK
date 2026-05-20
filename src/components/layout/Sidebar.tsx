@@ -50,19 +50,21 @@ export default function Sidebar({ unreadCount = 0, userRole }: SidebarProps) {
             )}
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {href === '/dashboard' && unreadCount > 0 && (
+              <span className="bg-indigo-600 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
 
       <div className="px-3 pb-4 border-t border-[#222] pt-3">
-        {unreadCount > 0 && (
+        {false && unreadCount > 0 && (
           <div className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-[#888] mb-1">
             <Bell className="w-4 h-4" />
             <span>通知</span>
-            <span className="ml-auto bg-indigo-600 text-white text-xs font-medium rounded-full px-1.5 py-0.5">
-              {unreadCount}
-            </span>
           </div>
         )}
         <button

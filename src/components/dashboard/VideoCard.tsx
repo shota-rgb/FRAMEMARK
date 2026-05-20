@@ -10,22 +10,33 @@ interface VideoCardProps {
     commentCount?: number
   }
   view: 'grid' | 'list'
+  requiresAction?: boolean
 }
 
-export default function VideoCard({ video, view }: VideoCardProps) {
+export default function VideoCard({ video, view, requiresAction }: VideoCardProps) {
   if (view === 'list') {
     return (
       <Link
         href={`/videos/${video.id}`}
         className="flex items-center gap-4 px-4 py-3 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl hover:border-[#444] hover:bg-[#1e1e1e] transition-all group"
       >
-        <div className="w-28 h-16 bg-[#252525] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+        <div className="w-28 h-16 bg-[#252525] rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative">
           <span className="text-[#444] text-xs">動画</span>
+          {requiresAction && (
+            <span className="absolute top-1 left-1 w-2 h-2 bg-indigo-500 rounded-full" />
+          )}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-white font-medium text-sm truncate group-hover:text-indigo-300 transition-colors">
-            {video.title}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-white font-medium text-sm truncate group-hover:text-indigo-300 transition-colors">
+              {video.title}
+            </p>
+            {requiresAction && (
+              <span className="flex-shrink-0 text-[10px] font-semibold text-indigo-300 bg-indigo-950/70 border border-indigo-800/50 px-1.5 py-0.5 rounded">
+                要対応
+              </span>
+            )}
+          </div>
           <p className="text-[#666] text-xs mt-0.5">{formatRelativeTime(video.updated_at)}</p>
         </div>
         <div className="flex items-center gap-4 flex-shrink-0">
@@ -58,6 +69,13 @@ export default function VideoCard({ video, view }: VideoCardProps) {
         <div className="absolute top-2 right-2">
           <StatusBadge status={video.status} />
         </div>
+        {requiresAction && (
+          <div className="absolute top-2 left-2">
+            <span className="text-[10px] font-bold text-white bg-indigo-600 px-1.5 py-0.5 rounded">
+              要対応
+            </span>
+          </div>
+        )}
       </div>
       <div className="p-3">
         <p className="text-white font-medium text-sm truncate group-hover:text-indigo-300 transition-colors">

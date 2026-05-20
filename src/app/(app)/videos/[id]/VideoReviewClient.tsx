@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ChevronLeft, ChevronRight, Pen, Send, Image as ImageIcon, Clock,
-  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload
+  AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload, X
 } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -324,12 +324,30 @@ export default function VideoReviewClient({
               }
             }}
           >
+            {/* Annotation mode notice — shown above the canvas, z-20 */}
+            {annotationMode && (
+              <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between bg-black/85 backdrop-blur-sm px-3 py-2 pointer-events-auto">
+                <div className="flex items-center gap-1.5 text-xs text-white/70">
+                  <Pen className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                  <span>描画モード中 — 再生・シーク操作は停止しています</span>
+                </div>
+                <button
+                  onClick={() => setAnnotationMode(false)}
+                  className="flex items-center gap-1 text-xs text-white/70 hover:text-white bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg transition-colors flex-shrink-0 ml-3"
+                >
+                  <X className="w-3 h-3" />
+                  閉じて動画操作へ
+                </button>
+              </div>
+            )}
+
             {videoUrl ? (
               <VideoPlayer
                 src={videoUrl}
                 onTimeUpdate={setCurrentTime}
                 onSeek={handleSeek}
                 seekTo={seekTo}
+                forcePause={annotationMode}
               />
             ) : (
               <div className="flex items-center justify-center h-full text-[#444]">

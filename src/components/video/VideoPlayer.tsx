@@ -14,9 +14,10 @@ interface VideoPlayerProps {
   onTimeUpdate?: (time: number) => void
   onSeek?: (time: number) => void
   seekTo?: number | null
+  forcePause?: boolean
 }
 
-export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo }: VideoPlayerProps) {
+export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo, forcePause }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
@@ -39,6 +40,16 @@ export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo }: Video
       setCurrentTime(seekTo)
     }
   }, [seekTo])
+
+  // Pause when annotation mode is active
+  useEffect(() => {
+    const v = videoRef.current
+    if (!v) return
+    if (forcePause && !v.paused) {
+      v.pause()
+      setPlaying(false)
+    }
+  }, [forcePause])
 
   const resetControlsTimer = useCallback(() => {
     setShowControls(true)
