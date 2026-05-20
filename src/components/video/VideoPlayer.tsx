@@ -115,14 +115,14 @@ export default function VideoPlayer({ src, onTimeUpdate, onSeek, seekTo }: Video
   return (
     <div
       ref={containerRef}
-      className="relative bg-black group"
+      className="relative bg-black group w-full h-full flex items-center justify-center"
       onMouseMove={resetControlsTimer}
       onClick={togglePlay}
     >
       <video
         ref={videoRef}
         src={src}
-        className="w-full block"
+        className="max-w-full max-h-full block"
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
         onPlay={() => setPlaying(true)}

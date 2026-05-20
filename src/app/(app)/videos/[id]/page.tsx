@@ -28,11 +28,13 @@ export default async function VideoReviewPage({ params }: Props) {
   )
   const latestVersion = versions[0] ?? null
 
-  // Get public URL for latest version
+  // Get signed URL for latest version (bucket is private)
   let videoUrl: string | null = null
   if (latestVersion?.storage_path && !latestVersion.is_deleted) {
-    const { data } = supabase.storage.from('videos').getPublicUrl(latestVersion.storage_path)
-    videoUrl = data?.publicUrl ?? null
+    const { data } = await supabase.storage
+      .from('videos')
+      .createSignedUrl(latestVersion.storage_path, 60 * 60) // 1時間有効
+    videoUrl = data?.signedUrl ?? null
   }
 
   // Fetch comments with author profiles

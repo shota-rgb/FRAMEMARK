@@ -224,7 +224,7 @@ export default function VideoReviewClient({
           {/* Video area */}
           <div
             ref={videoContainerRef}
-            className="relative flex-1 bg-black overflow-hidden"
+            className="relative flex-1 bg-black overflow-hidden flex items-center justify-center"
             onMouseEnter={() => {
               if (videoContainerRef.current) {
                 setVideoContainerSize({
