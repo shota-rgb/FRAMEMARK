@@ -90,7 +90,7 @@ export default async function DashboardPage() {
 
   // Batch-sign thumbnail URLs
   const thumbnailPaths = rawEnriched
-    .filter((v) => v.latestVersion?.thumbnail_path && !v.latestVersion?.is_deleted)
+    .filter((v) => v.latestVersion?.thumbnail_path)
     .map((v) => v.latestVersion!.thumbnail_path as string)
 
   const thumbnailUrlMap: Record<string, string> = {}

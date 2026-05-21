@@ -575,16 +575,23 @@ export default function VideoReviewClient({
               <Ban className="w-5 h-5 text-red-400 flex-shrink-0" />
               <h2 className="text-white font-semibold text-lg">校正フローを終了しますか？</h2>
             </div>
-            <p className="text-[#666] text-sm mb-5 leading-relaxed">
-              この操作は取り消せません。フローを終了すると、ステータスが「終了」になり、以降のステータス変更ができなくなります。
-              コメントと修正履歴は保持されます。
+            <p className="text-[#666] text-sm mb-4 leading-relaxed">
+              動画ファイルはこのまま保持するか、ストレージから削除できます。
+              コメントと修正履歴はすべて保存されます。
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => setShowCancelModal(false)}
-                className="flex-1 bg-[#2a2a2a] hover:bg-[#333] text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+                onClick={async () => {
+                  await handleStatusChange('cancelled')
+                  if (latestVersion?.storage_path) {
+                    await supabase.storage.from('videos').remove([latestVersion.storage_path])
+                    await supabase.from('video_versions').update({ is_deleted: true }).eq('video_id', video.id)
+                  }
+                  setShowCancelModal(false)
+                }}
+                className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
-                戻る
+                終了 + ファイル削除
               </button>
               <button
                 onClick={async () => {
@@ -593,9 +600,15 @@ export default function VideoReviewClient({
                 }}
                 className="flex-1 bg-red-700 hover:bg-red-600 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
               >
-                フローを終了する
+                終了 + ファイル保持
               </button>
             </div>
+            <button
+              onClick={() => setShowCancelModal(false)}
+              className="w-full text-[#555] hover:text-white text-sm mt-3 transition-colors"
+            >
+              キャンセル
+            </button>
           </div>
         </div>
       )}
