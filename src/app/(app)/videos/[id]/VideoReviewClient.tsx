@@ -16,6 +16,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatTimecode, formatFileSize, STATUS_LABELS } from '@/lib/utils'
 import type { Video, VideoVersion, Comment, CommentTemplate, VideoStatus, Annotation } from '@/lib/types'
 import type { AnnotationCanvasRef, DrawShape } from '@/components/video/AnnotationCanvas'
+import { markVideoSeen } from '@/app/actions'
 
 const AnnotationCanvas = dynamic(() => import('@/components/video/AnnotationCanvas'), { ssr: false })
 
@@ -108,6 +109,12 @@ export default function VideoReviewClient({
   const uploadFileInputRef = useRef<HTMLInputElement>(null)
   const [videoContainerSize, setVideoContainerSize] = useState({ w: 0, h: 0 })
   const [pendingAnnotation, setPendingAnnotation] = useState<DrawShape[] | null>(null)
+
+  // Mark this video as seen at its current status (clears the sidebar badge)
+  useEffect(() => {
+    markVideoSeen(video.id, video.status)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSeek = useCallback((time: number, annotation?: Annotation | null) => {
     setSeekTo(time)
