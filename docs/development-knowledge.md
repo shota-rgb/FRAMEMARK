@@ -407,63 +407,207 @@ git commit -m "docs: add xxx documentation"
 
 ---
 
-## 9. Notionへの保存と今後のClaude参照方法
+## 9. Notion ナレッジベース — 蓄積方針と Claude 参照方法
 
-### 推奨：CLAUDE.md に要約を書く（最も手軽）
+### 9-1. 蓄積する情報の分類
 
-Claude Code はプロジェクトルートの `CLAUDE.md` を**会話開始時に自動で読み込む**。
-次のプロジェクトで使いたい知識は、そのプロジェクトの `CLAUDE.md` に転記する。
+プロジェクトが終わるたびに以下の4カテゴリで Notion に記録する。
+情報の「鮮度」が異なるため、カテゴリを分けて管理する。
 
-```markdown
-# CLAUDE.md に書くべき内容
-- 技術スタックとバージョン固有の注意点
-- 使わないコマンド・ファイルの禁止事項
-- プロジェクト固有のアーキテクチャルール
+| カテゴリ | 内容 | 更新頻度 |
+|---|---|---|
+| **技術パターン** | Supabase・Next.js などのコードスニペット・設計パターン | 技術アップデートごと |
+| **つまづきログ** | エラー内容・原因・解決策（本ドキュメントのセクション4） | プロジェクト終了時 |
+| **ツール制約** | 各サービスの料金プラン制限・バグ・仕様の罠 | 判明したとき随時 |
+| **プロセスルール** | Claude との作業手順・Gitルール・コーディング規約 | 変更があったとき |
+
+---
+
+### 9-2. Notion データベース設計（推奨）
+
+**1つのデータベース「AI開発ナレッジ」**を作り、プロパティで分類する。
+
+```
+データベース名：AI開発ナレッジ
+
+プロパティ：
+  タイトル        → ナレッジのタイトル（例：「Vercel Hobby × Co-Authored-By 問題」）
+  カテゴリ        → セレクト（技術パターン / つまづきログ / ツール制約 / プロセスルール）
+  技術タグ        → マルチセレクト（Next.js / Supabase / Vercel / Claude / TypeScript ...）
+  プロジェクト    → セレクト（FRAMEMARK / 次のプロジェクト名 / 共通 ...）
+  重要度          → セレクト（高 / 中 / 低）
+  記録日          → 日付
+  解決済み        → チェックボックス（つまづきログの場合）
 ```
 
-### グローバル設定：~/.claude/CLAUDE.md
+**ビューの使い分け：**
+- **ギャラリービュー** → 全ナレッジをカード形式で俯瞰
+- **フィルター：カテゴリ=技術パターン** → 次プロジェクト開始時に参照
+- **フィルター：重要度=高** → Claude に渡す優先度の高い情報を絞り込み
 
-**全プロジェクト共通のルール**（Co-Authored-By 禁止など）は
-`~/.claude/CLAUDE.md` に書くとすべての Claude Code セッションで参照される。
+---
+
+### 9-3. 蓄積のタイミングとルール
+
+```
+プロジェクト中：
+  → つまづいて解決したらすぐ Notion に1件追加（鮮度が高いうちに）
+  → Claude との会話で「これは重要な決定だ」と思ったらメモ
+
+プロジェクト終了時：
+  → docs/development-knowledge.md を丸ごと Notion に貼り付け
+  → 新しいナレッジをデータベースに個別追加
+
+定期レビュー（月1回）：
+  → 古い情報・解決済みのつまづきを「アーカイブ」タグに移す
+  → 技術バージョンが上がって無効になったナレッジを削除
+```
+
+---
+
+### 9-4. Claude への参照方法（3つのアプローチ）
+
+#### ① CLAUDE.md に転記（最も確実・推奨）
+
+Claude Code はプロジェクトルートの `CLAUDE.md` を**セッション開始時に自動で読み込む**。
+重要なナレッジは CLAUDE.md に書いておくだけで、毎回指示しなくても参照される。
+
+```
+書き方の原則：
+  - 「何をするか」ではなく「なぜするか・してはいけないか」を書く
+  - コードスニペットは短く（長い例は @ 参照に任せる）
+  - プロジェクト固有の情報のみ（汎用情報は書かない）
+```
+
+**グローバル設定（全プロジェクト共通ルール）：**
+```bash
+# ~/.claude/CLAUDE.md に書く内容
+- コミットに Co-Authored-By を付けない（Vercel Hobby デプロイブロック防止）
+- 作業の区切りで commit → push まで実行する
+```
+
+**プロジェクト固有（各プロジェクトの CLAUDE.md）：**
+```bash
+# プロジェクトルート/CLAUDE.md に書く内容
+- 使用技術とバージョン固有の注意点
+- 禁止事項（middleware.ts を作らない など）
+- アーキテクチャルール（Server/Client 分離パターン）
+```
+
+---
+
+#### ② @ ファイル参照（Claude Code）
+
+Claude Code では `@ファイルパス` でファイルを会話に読み込める。
+Notion に保存した内容をローカルファイルにも残しておき、必要なときに参照させる。
+
+```
+使い方（Claude Code のチャット欄に入力）：
+  @docs/development-knowledge.md を参照して、Next.js × Supabase の注意点を確認してください
+
+使いどころ：
+  → プロジェクト開始時に「前回のナレッジを踏まえて実装して」と渡す
+  → 特定の技術で詰まったとき「このナレッジを見て原因を考えて」と渡す
+  → CLAUDE.md に書くほどでもない補足情報を都度渡す
+```
+
+---
+
+#### ③ Notion MCP サーバー（Claude が直接 Notion を読み書き）
+
+MCP（Model Context Protocol）を設定すると、Claude が Notion を直接検索・読み書きできる。
+「ナレッジを探して」「このナレッジを追加して」を自然言語で指示できる。
+
+**設定手順：**
 
 ```bash
-# 例：~/.claude/CLAUDE.md
-## Git ルール
-- コミットメッセージに Co-Authored-By を付けない
-- Vercel Hobby + プライベートリポジトリで自動デプロイが壊れるため
+# 1. Notion Integration を作成
+#    Notion → Settings → Connections → Develop or manage integrations
+#    → 新しいインテグレーション作成 → API キーをコピー
+
+# 2. MCP サーバーを設定
+#    Claude Code の設定ファイルを開く：
+#    ~/Library/Application Support/Claude/claude_desktop_config.json
 ```
 
-### Notion 保存後の参照方法
-
-**方法 A：ファイルを @ で参照（Claude Code）**
+```json
+{
+  "mcpServers": {
+    "notion": {
+      "command": "npx",
+      "args": ["-y", "@notionhq/notion-mcp-server"],
+      "env": {
+        "OPENAPI_MCP_HEADERS": "{\"Authorization\": \"Bearer ntn_xxxxxxxxxxxxxx\", \"Notion-Version\": \"2022-06-28\"}"
+      }
+    }
+  }
+}
 ```
-このドキュメントを @docs/development-knowledge.md として保存済み。
-Claude Code で「@docs/development-knowledge.md を参照して」と指示できる。
+
+```bash
+# 3. 対象の Notion ページ・DBにインテグレーションを接続
+#    Notion のページ右上「...」→「コネクト」→ 作成したインテグレーションを追加
+
+# 4. Claude Code を再起動して有効化
 ```
 
-**方法 B：Notion MCP サーバー（高度）**
-Claude Code に [Notion MCP](https://github.com/modelcontextprotocol/servers) を設定すると、
-Claude が直接 Notion を読み書きできる。
-設定ファイル: `~/.claude/claude_desktop_config.json`
+**MCP 使用時の指示例：**
+```
+「Notion の AI開発ナレッジ DB から Next.js に関するナレッジを検索して」
+「今日解決した Vercel のつまづきを Notion のナレッジ DB に追加して」
+```
 
-**方法 C：Skills（Claude Code の `/` コマンド）**
-Skills は「特定のワークフローを実行する手順書」に向いている。
-参照データ（ナレッジベース）には不向き。CLAUDE.md や @ 参照の方が適切。
+---
 
-### 結論：この開発ナレッジの活用方法
+#### ④ Skills（用途が限定的）
+
+Claude Code の `/スキル名` で呼び出す機能。
+**参照データには向かない**（ナレッジ検索・表示には ① か ③ が適切）。
+「毎回同じ手順を実行する」ワークフロー自動化に使う。
 
 ```
-1. このファイル（docs/development-knowledge.md）をそのままNotionに貼る
-   → Notion の URL を CLAUDE.md に記載しておく
+Skills が向いているケース：
+  → /new-project：新プロジェクト開始時の定型セットアップ
+  → /deploy-check：デプロイ前チェックリストの実行
+  → /knowledge-record：会話からナレッジを抽出してNotionに保存する手順
 
-2. 次の Next.js × Supabase プロジェクト開始時：
-   → CLAUDE.md にこのファイルから「技術スタック固有の注意点」を転記
-   → 特に「2. Next.js 16 固有の注意点」「3. Supabase パターン集」が再利用しやすい
-
-3. Claude に渡すとき：
-   → 「@docs/development-knowledge.md を参照してください」と指示
-   → または CLAUDE.md に要約を書いておく（自動参照されるため指示不要）
+Skills が向いていないケース：
+  → ナレッジの検索・参照（@ 参照か MCP を使う）
+  → コンテキストとして渡したいドキュメント（CLAUDE.md か @ 参照を使う）
 ```
+
+---
+
+### 9-5. 推奨フロー（次プロジェクト開始〜終了）
+
+```
+【プロジェクト開始時】
+  1. Notion で「AI開発ナレッジ DB」を開く
+  2. 技術タグ（Next.js / Supabase 等）でフィルタして関連ナレッジを確認
+  3. 重要なものを新プロジェクトの CLAUDE.md にコピー
+  4. Claude Code を開いて「CLAUDE.md を読んだ上で実装してください」
+
+【開発中】
+  5. つまづいて解決したら Notion に即メモ（1〜3行で良い）
+  6. Claude との重要な意思決定は CLAUDE.md に追記
+
+【プロジェクト終了時】
+  7. docs/development-knowledge.md を作成（Claude に依頼）
+  8. Notion の DB に個別ナレッジとして追加
+  9. 次プロジェクトで再利用できるパターンを CLAUDE.md の雛形に反映
+```
+
+---
+
+### 9-6. 参照方法の選び方まとめ
+
+| シーン | 推奨方法 |
+|---|---|
+| 毎回自動で読ませたい共通ルール | `~/.claude/CLAUDE.md`（グローバル） |
+| このプロジェクト固有のルール | `CLAUDE.md`（プロジェクトルート） |
+| 特定のナレッジを今すぐ参照させたい | `@docs/development-knowledge.md` |
+| Claude に Notion を直接検索させたい | Notion MCP サーバー |
+| 定型ワークフローを `/コマンド` で実行 | Skills |
 
 ---
 
