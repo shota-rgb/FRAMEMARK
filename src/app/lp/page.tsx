@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Film, ArrowRight } from 'lucide-react'
 
 export default function LandingPage() {
@@ -53,12 +54,14 @@ export default function LandingPage() {
 
           {/* Hero mockup */}
           <div className="relative max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-indigo-900/30">
-            {/* TODO: Replace src with actual screenshot */}
-            <div className="bg-[#10101e] aspect-[16/9] flex flex-col items-center justify-center gap-2 text-[#333] border-2 border-dashed border-[#222]">
-              <span className="text-4xl">🖼️</span>
-              <p className="text-sm">スクリーンショットを挿入（ビデオレビュー画面）</p>
-              <p className="text-xs text-[#222]">推奨: 1600×900px</p>
-            </div>
+            <Image
+              src="/screenshots/hero.png"
+              alt="FRAMEMARKのビデオレビュー画面"
+              width={1000}
+              height={435}
+              className="w-full h-auto"
+              unoptimized
+            />
           </div>
         </div>
       </section>
@@ -147,25 +150,31 @@ export default function LandingPage() {
               {
                 title: 'タイムコード付きコメント',
                 desc: '正確な時間を指定して、的確に指示',
-                label: 'スクリーンショット（タイムコードコメント）',
+                src: '/screenshots/feature-timecode.png',
+                w: 530, h: 331,
               },
               {
                 title: 'マーキング & アノテーション',
                 desc: '映像に直接書き込み、視覚的に共有',
-                label: 'スクリーンショット（アノテーション）',
+                src: '/screenshots/feature-annotation.png',
+                w: 580, h: 265,
               },
               {
                 title: 'バージョン管理',
                 desc: 'バージョンの履歴とステータスを可視化',
-                label: 'スクリーンショット（バージョン管理）',
+                src: '/screenshots/feature-version.png',
+                w: 530, h: 225,
               },
             ].map((feature) => (
               <div key={feature.title} className="bg-[#12121e] border border-[#1e1e1e] rounded-2xl overflow-hidden">
-                {/* TODO: Replace with actual screenshot */}
-                <div className="aspect-[4/3] bg-[#0d0d1a] flex flex-col items-center justify-center gap-2 text-[#2a2a2a] border-b border-[#1a1a1a]">
-                  <span className="text-3xl">🖼️</span>
-                  <p className="text-xs text-center px-4">{feature.label}</p>
-                </div>
+                <Image
+                  src={feature.src}
+                  alt={feature.title}
+                  width={feature.w}
+                  height={feature.h}
+                  className="w-full h-auto border-b border-[#1a1a1a]"
+                  unoptimized
+                />
                 <div className="p-5">
                   <h3 className="font-semibold text-white mb-1.5 text-sm">{feature.title}</h3>
                   <p className="text-xs text-[#666] leading-relaxed">{feature.desc}</p>
@@ -229,13 +238,15 @@ export default function LandingPage() {
       <section className="py-20 px-6">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-3xl font-bold text-center mb-12">ダッシュボード</h2>
-          {/* TODO: Replace with actual screenshot */}
           <div className="rounded-2xl overflow-hidden border border-white/8 shadow-2xl shadow-indigo-900/10">
-            <div className="bg-[#12121e] aspect-[16/9] flex flex-col items-center justify-center gap-2 text-[#2a2a2a] border-2 border-dashed border-[#1e1e1e]">
-              <span className="text-4xl">🖼️</span>
-              <p className="text-sm">スクリーンショットを挿入（ダッシュボード）</p>
-              <p className="text-xs text-[#222]">推奨: 1600×900px</p>
-            </div>
+            <Image
+              src="/screenshots/dashboard.png"
+              alt="FRAMEMARKのダッシュボード"
+              width={1000}
+              height={420}
+              className="w-full h-auto"
+              unoptimized
+            />
           </div>
         </div>
       </section>
