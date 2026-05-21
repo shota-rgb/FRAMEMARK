@@ -28,14 +28,17 @@ export default async function VideoReviewPage({ params }: Props) {
   )
   const latestVersion = versions[0] ?? null
 
-  // Get signed URL for latest version (bucket is private)
-  let videoUrl: string | null = null
-  if (latestVersion?.storage_path && !latestVersion.is_deleted) {
-    const { data } = await supabase.storage
-      .from('videos')
-      .createSignedUrl(latestVersion.storage_path, 60 * 60) // 1時間有効
-    videoUrl = data?.signedUrl ?? null
+  // Get signed URLs for all non-deleted versions (1 hour validity)
+  const versionUrls: Record<string, string> = {}
+  for (const v of versions) {
+    if (v.storage_path && !v.is_deleted) {
+      const { data } = await supabase.storage
+        .from('videos')
+        .createSignedUrl(v.storage_path, 60 * 60)
+      if (data?.signedUrl) versionUrls[v.id] = data.signedUrl
+    }
   }
+  const videoUrl = latestVersion ? (versionUrls[latestVersion.id] ?? null) : null
 
   // Fetch comments with author profiles
   const { data: commentsRaw } = await supabase
@@ -125,6 +128,7 @@ export default async function VideoReviewPage({ params }: Props) {
       versions={versions}
       latestVersion={latestVersion}
       videoUrl={videoUrl}
+      versionUrls={versionUrls}
       comments={comments}
       templates={templates ?? []}
       currentUser={{ id: user.id, email: user.email ?? '', display_name: authorMap[user.id]?.display_name ?? null }}

@@ -53,6 +53,7 @@ interface VideoReviewClientProps {
   versions: VideoVersion[]
   latestVersion: VideoVersion | null
   videoUrl: string | null
+  versionUrls: Record<string, string>
   comments: Comment[]
   templates: CommentTemplate[]
   currentUser: { id: string; email: string; display_name?: string | null }
@@ -71,7 +72,7 @@ const EDITOR_TRANSITIONS: Partial<Record<VideoStatus, { label: string; next: Vid
 }
 
 export default function VideoReviewClient({
-  video, versions, latestVersion, videoUrl,
+  video, versions, latestVersion, videoUrl, versionUrls,
   comments: initialComments, templates,
   currentUser, isDirector,
 }: VideoReviewClientProps) {
@@ -91,6 +92,10 @@ export default function VideoReviewClient({
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const [videoStatus, setVideoStatus] = useState<VideoStatus>(video.status)
+  const [activeVersionId, setActiveVersionId] = useState(latestVersion?.id ?? '')
+  const currentVideoUrl = versionUrls[activeVersionId] ?? videoUrl
+  const activeVersion = versions.find((v) => v.id === activeVersionId) ?? latestVersion
+
   const [showVersions, setShowVersions] = useState(false)
   const [showApproveModal, setShowApproveModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -283,23 +288,40 @@ export default function VideoReviewClient({
         <h1 className="text-sm font-medium text-white truncate">{video.title}</h1>
         <StatusBadge status={videoStatus} />
 
-        {latestVersion && (
+        {versions.length > 0 && (
           <div className="relative">
             <button
               onClick={() => setShowVersions(!showVersions)}
               className="flex items-center gap-1.5 text-xs text-[#666] hover:text-white bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 transition-colors"
             >
-              V{latestVersion.version_number}
+              V{activeVersion?.version_number ?? latestVersion?.version_number}
               <ChevronDown className="w-3 h-3" />
             </button>
             {showVersions && (
-              <div className="absolute top-full left-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-50 shadow-xl min-w-[200px]">
+              <div className="absolute top-full left-0 mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-50 shadow-xl min-w-[220px]">
                 {versions.map((v) => (
-                  <div key={v.id} className="flex items-center gap-3 px-3 py-2 hover:bg-[#222] transition-colors">
-                    <span className="text-white text-sm">V{v.version_number}</span>
-                    <span className="text-[#555] text-xs">{formatFileSize(v.file_size)}</span>
-                    {v.is_deleted && <span className="text-xs text-[#444] ml-auto">削除済み</span>}
-                  </div>
+                  <button
+                    key={v.id}
+                    onClick={() => {
+                      if (!v.is_deleted) setActiveVersionId(v.id)
+                      setShowVersions(false)
+                    }}
+                    disabled={v.is_deleted}
+                    className={`w-full flex items-center gap-3 px-3 py-2 transition-colors text-left ${
+                      v.id === activeVersionId
+                        ? 'bg-indigo-950/50 text-indigo-300'
+                        : v.is_deleted
+                        ? 'text-[#444] cursor-not-allowed'
+                        : 'hover:bg-[#222] text-white'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">V{v.version_number}</span>
+                    <span className="text-xs text-[#555]">{formatFileSize(v.file_size)}</span>
+                    {v.id === latestVersion?.id && !v.is_deleted && (
+                      <span className="ml-auto text-[10px] text-indigo-400">最新</span>
+                    )}
+                    {v.is_deleted && <span className="ml-auto text-xs text-[#444]">削除済み</span>}
+                  </button>
                 ))}
               </div>
             )}
@@ -399,9 +421,9 @@ export default function VideoReviewClient({
               </div>
             )}
 
-            {videoUrl ? (
+            {currentVideoUrl ? (
               <VideoPlayer
-                src={videoUrl}
+                src={currentVideoUrl}
                 onTimeUpdate={setCurrentTime}
                 onSeek={handleSeek}
                 seekTo={seekTo}
@@ -409,7 +431,7 @@ export default function VideoReviewClient({
               />
             ) : (
               <div className="flex items-center justify-center h-full text-[#444]">
-                {latestVersion?.is_deleted ? '動画ファイルは削除されています' : '動画を読み込めません'}
+                {activeVersion?.is_deleted ? '動画ファイルは削除されています' : '動画を読み込めません'}
               </div>
             )}
 
