@@ -7,8 +7,8 @@ import {
   AlertCircle, CheckCircle, MoreHorizontal, History, ChevronDown, Upload, X, Ban
 } from 'lucide-react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import VideoPlayer from '@/components/video/VideoPlayer'
+import AnnotationCanvas from '@/components/video/AnnotationCanvas'
 import AnnotationToolbar, { type AnnotationTool, type AnnotationColor } from '@/components/video/AnnotationToolbar'
 import CommentPanel from '@/components/video/CommentPanel'
 import StatusBadge from '@/components/dashboard/StatusBadge'
@@ -17,8 +17,6 @@ import { formatTimecode, formatFileSize, STATUS_LABELS } from '@/lib/utils'
 import type { Video, VideoVersion, Comment, CommentTemplate, VideoStatus, Annotation } from '@/lib/types'
 import type { AnnotationCanvasRef, DrawShape } from '@/components/video/AnnotationCanvas'
 import { markVideoSeen } from '@/app/actions'
-
-const AnnotationCanvas = dynamic(() => import('@/components/video/AnnotationCanvas'), { ssr: false })
 
 async function captureVideoThumbnail(file: File): Promise<Blob | null> {
   return new Promise((resolve) => {
@@ -108,7 +106,7 @@ export default function VideoReviewClient({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const uploadFileInputRef = useRef<HTMLInputElement>(null)
   const [videoContainerSize, setVideoContainerSize] = useState({ w: 0, h: 0 })
-  const [pendingAnnotation, setPendingAnnotation] = useState<DrawShape[] | null>(null)
+  const [pendingAnnotation, setPendingAnnotation] = useState<{ shapes: DrawShape[]; canvasWidth?: number; canvasHeight?: number } | null>(null)
 
   // Mark this video as seen at its current status (clears the sidebar badge)
   useEffect(() => {
@@ -119,7 +117,7 @@ export default function VideoReviewClient({
   const handleSeek = useCallback((time: number, annotation?: Annotation | null) => {
     setSeekTo(time)
     if (annotation?.canvas_data) {
-      const data = annotation.canvas_data as { shapes?: DrawShape[] }
+      const data = annotation.canvas_data as { shapes?: DrawShape[]; canvasWidth?: number; canvasHeight?: number }
       if (data.shapes?.length) {
         if (videoContainerRef.current) {
           setVideoContainerSize({
@@ -128,15 +126,23 @@ export default function VideoReviewClient({
           })
         }
         setAnnotationMode(true)
-        setPendingAnnotation(data.shapes)
+        setPendingAnnotation({ shapes: data.shapes, canvasWidth: data.canvasWidth, canvasHeight: data.canvasHeight })
+        return
       }
     }
+    // No annotation on this comment: exit annotation view and clear canvas
+    setAnnotationMode(false)
+    annotationRef.current?.clear()
+    setPendingAnnotation(null)
   }, [])
 
-  // アノテーションモードが有効になった後、保留中のシェイプをキャンバスにロード
   useEffect(() => {
     if (annotationMode && pendingAnnotation !== null && annotationRef.current) {
-      annotationRef.current.loadShapes(pendingAnnotation)
+      annotationRef.current.loadShapes(
+        pendingAnnotation.shapes,
+        pendingAnnotation.canvasWidth,
+        pendingAnnotation.canvasHeight,
+      )
       setPendingAnnotation(null)
     }
   }, [annotationMode, pendingAnnotation])

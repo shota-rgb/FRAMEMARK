@@ -4,10 +4,10 @@ import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback, useSta
 import type { AnnotationTool, AnnotationColor } from './AnnotationToolbar'
 
 export interface AnnotationCanvasRef {
-  getCanvasData: () => object | null
+  getCanvasData: () => { shapes: DrawShape[]; canvasWidth: number; canvasHeight: number }
   undo: () => void
   clear: () => void
-  loadShapes: (shapes: DrawShape[]) => void
+  loadShapes: (shapes: DrawShape[], savedWidth?: number, savedHeight?: number) => void
 }
 
 export interface DrawShape {
@@ -280,10 +280,31 @@ const AnnotationCanvas = forwardRef<AnnotationCanvasRef, AnnotationCanvasProps>(
     }, [activeTool])
 
     useImperativeHandle(ref, () => ({
-      getCanvasData: () => ({ shapes: shapesRef.current }),
+      getCanvasData() {
+        const canvas = canvasRef.current
+        return {
+          shapes: shapesRef.current,
+          canvasWidth: canvas?.width ?? width,
+          canvasHeight: canvas?.height ?? height,
+        }
+      },
       undo() { shapesRef.current.pop(); redraw() },
       clear() { shapesRef.current = []; currentShapeRef.current = null; redraw() },
-      loadShapes(shapes: DrawShape[]) { shapesRef.current = [...shapes]; currentShapeRef.current = null; redraw() },
+      loadShapes(shapes: DrawShape[], savedWidth?: number, savedHeight?: number) {
+        const canvas = canvasRef.current
+        if (savedWidth && savedHeight && canvas && (savedWidth !== canvas.width || savedHeight !== canvas.height)) {
+          const sx = canvas.width / savedWidth
+          const sy = canvas.height / savedHeight
+          shapesRef.current = shapes.map((shape) => ({
+            ...shape,
+            points: shape.points.map((p) => ({ x: p.x * sx, y: p.y * sy })),
+          }))
+        } else {
+          shapesRef.current = [...shapes]
+        }
+        currentShapeRef.current = null
+        redraw()
+      },
     }))
 
     // テキストツール用: React合成イベントで確実にstate更新するオーバーレイ
