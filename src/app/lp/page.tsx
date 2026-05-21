@@ -35,7 +35,7 @@ export default function LandingPage() {
           </h1>
           <p className="text-lg text-[#999] mb-10 max-w-lg mx-auto leading-relaxed">
             タイムコード付きコメントで、<br />
-            ディレクターと編集者のやり取りを一元管理する
+            ディレクターと編集者のやり取りを一元管理
           </p>
           <div className="flex items-center justify-center gap-4 mb-16">
             <Link
