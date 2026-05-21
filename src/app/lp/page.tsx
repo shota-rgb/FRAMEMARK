@@ -202,9 +202,9 @@ export default function LandingPage() {
             {/* Steps */}
             <div className="flex-1 space-y-3">
               {[
-                { num: 1, label: 'アップロード', sub: '映像ファイルをアップロード', side: 'left' },
-                { num: 2, label: 'レビュー申請', sub: 'レビューを依頼', side: 'left' },
-                { num: 3, label: '修正依頼', sub: 'タイムコード付きで指示', side: 'right' },
+                { num: 1, label: 'アップロード', sub: '映像ファイルをアップロード', side: 'right' },
+                { num: 2, label: 'レビュー申請', sub: 'レビューを依頼', side: 'right' },
+                { num: 3, label: '修正依頼', sub: 'タイムコード付きで指示', side: 'left' },
                 { num: 4, label: '修正版アップロード', sub: '修正した映像を再アップロード', side: 'right' },
                 { num: 5, label: '校了', sub: '最終確認して承認', side: 'left' },
               ].map((step) => (
